@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { AmmoPhysics, PhysicsLoader, ExtendedMesh } from '@enable3d/ammo-physics'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 const ThreeScene = () => {
   // scene
@@ -47,56 +48,58 @@ const ThreeScene = () => {
 
   // add ground
   const addGround = () => {
-    const geometry = new THREE.BoxBufferGeometry(20, 1, 20)
-    const material = new THREE.MeshLambertMaterial({ color: 0xc4c4c4 })
+    const geometry = new THREE.BoxBufferGeometry(30, 0.5, 30)
+    const material = new THREE.MeshLambertMaterial({ color: '#444444' })
     const ground = new ExtendedMesh(geometry, material)
     scene.add(ground)
     // @ts-ignore
     physics.add.existing(ground, { collisionFlags: 1, mass: 0 })
   }
+  // addGround()
+  /**
+ * Models
+ */
 
-  // add box
-  const addBox = (x, y, z, color, isKinematic = false) => {
-    const geometry = new THREE.BoxGeometry()
-    const material = new THREE.MeshLambertMaterial({ color })
-    const box = new ExtendedMesh(geometry, material)
-    box.position.set(x, y, z)
-    scene.add(box)
-    // @ts-ignore
-    physics.add.existing(box)
-    if (isKinematic) box.body.setCollisionFlags(2) // make it kinematic
-    return box
+const gltfLoader = new GLTFLoader()
+let mixer;
+gltfLoader.load(
+  '/assets/Fox/glTF/Fox.gltf',
+  (gltf) =>
+  {
+      const fox = gltf.scene
+      scene.add(fox)
+      fox.position.set(0, .23, 0)
+      fox.scale.set(.08, .08, .08)
+      mixer = new THREE.AnimationMixer(gltf.scene)
+      const action = mixer.clipAction(gltf.animations[1])
+      action.play()
   }
+)
 
-  // add sphere
-  const addYellowSphere = () => {
-    const geometry = new THREE.SphereBufferGeometry()
-    const material = new THREE.MeshLambertMaterial({ color: 'yellow' })
-    const sphere = new ExtendedMesh(geometry, material)
-    sphere.position.set(0, 2, 5)
-    scene.add(sphere)
-    // @ts-ignore
-    physics.add.existing(sphere)
-  }
-
-  // add green box
-  const greenBox = addBox(0, 5, 0, 0x00ff00, true)
-  //  add blue box
-  addBox(0.05, 10, 0, 0x2194ce)
-  // add ground
-  addGround()
-  // add yellow sphere
-  addYellowSphere()
+const cubeTextureLoader = new THREE.CubeTextureLoader()
+const environmentMap = cubeTextureLoader.load([
+  '/assets/background/nx.png',
+  '/assets/background/px.png',
+  '/assets/background/py.png',
+  '/assets/background/ny.png',
+  '/assets/background/nz.png',
+  '/assets/background/pz.png'
+])
+scene.background = environmentMap
 
   // clock
   const clock = new THREE.Clock()
 
   // loop
+  let previousTime = 0
   const animate = () => {
-    greenBox.rotation.x += 0.01
-    greenBox.rotation.y += 0.01
-    // @ts-ignore
-    greenBox.body.needUpdate = true // this is how you update kinematic bodies
+    const elapsedTime = clock.getElapsedTime()
+    const deltaTime = elapsedTime - previousTime
+    previousTime = elapsedTime
+    if(mixer)
+    {
+        mixer.update(deltaTime)
+    }
 
     physics.update(clock.getDelta() * 1000)
     physics.updateDebugger()
